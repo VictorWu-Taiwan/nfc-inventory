@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>物流箱盤點 - Web NFC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 0 20px;
+    }
+    input, button {
+      font-size: 16px;
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    button {
+      background-color: black;
+      color: white;
+      border: none;
+    }
+    .status {
+      margin-top: 20px;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h2>📦 物流箱 NFC 盤點</h2>
+  <form id="nfcForm">
+    <label>箱號（Tag ID）：</label>
+    <input type="text" id="tagId" placeholder="請刷 NFC 或手動輸入" required>
+
+    <label>狀態：</label>
+    <input type="text" id="status" value="盤點完成">
+
+    <button type="submit">送出</button>
+    <p id="result" class="status"></p>
+  </form>
+
+  <script>
+    async function startNFC() {
+      if ('NDEFReader' in window) {
+        try {
+          const ndef = new NDEFReader();
+          await ndef.scan();
+          console.log("✅ NFC reader started");
+
+          ndef.onreading = event => {
+            const tagId = event.serialNumber;
+            document.getElementById("tagId").value = tagId;
+            alert("已讀取箱號: " + tagId);
+          };
+        } catch (error) {
+          alert("❌ NFC 啟動失敗: " + error);
+        }
+      } else {
+        alert("⚠️ 此瀏覽器不支援 Web NFC（請用 Android + Chrome）");
+      }
+    }
+
+    window.onload = startNFC;
+
+    document.getElementById("nfcForm").addEventListener("submit", function(e){
+      e.preventDefault();
+
+      const tagId = document.getElementById("tagId").value.trim();
+      const status = document.getElementById("status").value.trim();
+
+      const confirmed = confirm(`請確認送出資料：\n箱號：${tagId}\n狀態：${status}`);
+      if (!confirmed) return;
+
+      const url = "https://script.google.com/macros/s/AKfycbwpo0y1sIfnjmd_DZLJf1wwRk09ygHowZCEEbeImEHsr_KRDBaogTHjWc4qe00dugToUg/exec";
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `tag_id=${encodeURIComponent(tagId)}&status=${encodeURIComponent(status)}`
+      })
+      .then(res => res.text())
+      .then(msg => {
+        alert(msg);
+        document.getElementById("result").innerText = msg;
+        document.getElementById("tagId").value = "";
+      })
+      .catch(err => alert("傳送失敗: " + err));
+    });
+  </script>
+</body>
+</html>
